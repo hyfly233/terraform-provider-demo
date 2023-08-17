@@ -6,7 +6,9 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/retry"
 	"net/http"
+	"time"
 
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
@@ -110,6 +112,33 @@ func (r *ExampleResource) Create(ctx context.Context, req resource.CreateRequest
 	// For the purposes of this example code, hardcoding a response value to
 	// save into the Terraform state.
 	data.Id = types.StringValue("example-id")
+
+	func() {
+		stateConf := &retry.StateChangeConf{
+			Pending: []string{"pending"},
+			Target:  []string{"ready"},
+			Refresh: func() (interface{}, string, error) {
+				return nil, "ready", nil
+			},
+			Timeout: 5 * time.Minute,
+		}
+
+		outputRaw, err := stateConf.WaitForStateContext(ctx)
+
+		if err != nil {
+			return
+		}
+
+		if output, ok := outputRaw.(*ExampleResourceModel); ok {
+
+			output.ConfigurableAttribute = types.StringValue("example-configurable-attribute")
+
+			return
+			//return output, err
+		}
+
+		//return nil, err
+	}()
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
